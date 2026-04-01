@@ -141,6 +141,40 @@ CREATE TABLE IF NOT EXISTS user_product_tag_relations (
     UNIQUE(user_favorite_id, tag_id) -- 同一关联唯一
 );
 
+-- 9. 爬虫任务管理表
+CREATE TABLE IF NOT EXISTS crawl_tasks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    country_id UUID NOT NULL REFERENCES countries(id) ON DELETE CASCADE, -- 目标国家
+    platform_id UUID NOT NULL REFERENCES platforms(id) ON DELETE CASCADE, -- 爬取平台
+    task_type VARCHAR(50) NOT NULL CHECK (task_type IN ('product_list', 'product_detail', 'price_update')), -- 任务类型
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'success', 'failed')), -- 任务状态
+    priority INTEGER DEFAULT 5, -- 优先级 1-10，数字越大优先级越高
+    target_url VARCHAR(500), -- 爬取目标URL
+    params JSONB DEFAULT '{}'::JSONB, -- 任务参数
+    total_count INTEGER DEFAULT 0, -- 预期爬取总数
+    success_count INTEGER DEFAULT 0, -- 成功爬取数量
+    failed_count INTEGER DEFAULT 0, -- 失败数量
+    error_message TEXT, -- 错误信息
+    started_at TIMESTAMPTZ, -- 开始时间
+    finished_at TIMESTAMPTZ, -- 完成时间
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. 市场配置表 (每个国家的个性化配置)
+CREATE TABLE IF NOT EXISTS market_config (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    country_id UUID NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+    config_key VARCHAR(100) NOT NULL, -- 配置键
+    config_value TEXT NOT NULL, -- 配置值
+    config_type VARCHAR(20) NOT NULL DEFAULT 'string' CHECK (config_type IN ('string', 'number', 'boolean', 'json')), -- 配置类型
+    description TEXT, -- 配置说明
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(country_id, config_key) -- 同一国家同一配置键唯一
+);
+
 -- ==================== 索引优化 ====================
 -- 国家表索引
 CREATE INDEX IF NOT EXISTS idx_countries_is_active ON countries(is_active);
@@ -173,6 +207,18 @@ CREATE INDEX IF NOT EXISTS idx_user_tags_user_id ON user_product_tags(user_id);
 -- 标签关联索引
 CREATE INDEX IF NOT EXISTS idx_tag_relations_favorite_id ON user_product_tag_relations(user_favorite_id);
 CREATE INDEX IF NOT EXISTS idx_tag_relations_tag_id ON user_product_tag_relations(tag_id);
+
+-- 爬虫任务表索引
+CREATE INDEX IF NOT EXISTS idx_crawl_tasks_country_id ON crawl_tasks(country_id);
+CREATE INDEX IF NOT EXISTS idx_crawl_tasks_platform_id ON crawl_tasks(platform_id);
+CREATE INDEX IF NOT EXISTS idx_crawl_tasks_status ON crawl_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_crawl_tasks_priority ON crawl_tasks(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_crawl_tasks_created_at ON crawl_tasks(created_at DESC);
+
+-- 市场配置表索引
+CREATE INDEX IF NOT EXISTS idx_market_config_country_id ON market_config(country_id);
+CREATE INDEX IF NOT EXISTS idx_market_config_key ON market_config(config_key);
+CREATE INDEX IF NOT EXISTS idx_market_config_active ON market_config(is_active);
 
 -- ==================== RLS行级安全策略 ====================
 -- 国家表：公开可读，管理员可写
@@ -230,6 +276,14 @@ CREATE POLICY "User can delete their own tag relations" ON user_product_tag_rela
     )
 );
 
+-- 爬虫任务表：公开可读，管理员/爬虫服务可写
+ALTER TABLE crawl_tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Crawl tasks are viewable by everyone" ON crawl_tasks FOR SELECT USING (true);
+
+-- 市场配置表：公开可读，管理员可写
+ALTER TABLE market_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Market config are viewable by everyone" ON market_config FOR SELECT USING (true);
+
 -- ==================== 自动更新时间触发器 ====================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -263,3 +317,37 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER trigger_user_tags_update_updated_at
 BEFORE UPDATE ON user_product_tags
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_crawl_tasks_update_updated_at
+BEFORE UPDATE ON crawl_tasks
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_market_config_update_updated_at
+BEFORE UPDATE ON market_config
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ==================== 初始数据 ====================
+-- 插入主流国家数据
+INSERT INTO countries (code, name, currency, currency_symbol, language_code, logistics_days_min, logistics_days_max, popular_categories, sort_order) VALUES
+('US', '美国', 'USD', '$', 'en', 7, 15, '{"3C数码", "家居用品", "服饰鞋帽", "美妆个护"}', 1),
+('CA', '加拿大', 'CAD', 'C$', 'en', 7, 18, '{"家居用品", "户外装备", "服饰"}', 2),
+('GB', '英国', 'GBP', '£', 'en', 5, 12, '{"3C数码", "美妆个护", "服饰"}', 3),
+('DE', '德国', 'EUR', '€', 'de', 5, 12, '{"家居用品", "汽车配件", "3C数码"}', 4),
+('FR', '法国', 'EUR', '€', 'fr', 5, 12, '{"美妆个护", "服饰", "家居用品"}', 5),
+('JP', '日本', 'JPY', '¥', 'ja', 3, 10, '{"3C数码", "动漫周边", "家居用品"}', 6),
+('AU', '澳大利亚', 'AUD', 'A$', 'en', 7, 18, '{"户外装备", "家居用品", "服饰"}', 7)
+ON CONFLICT (code) DO NOTHING;
+
+-- 插入主流平台数据
+INSERT INTO platforms (name, type, base_url) VALUES
+('Amazon US', 'source', 'https://www.amazon.com'),
+('Amazon UK', 'source', 'https://www.amazon.co.uk'),
+('Amazon DE', 'source', 'https://www.amazon.de'),
+('Amazon JP', 'source', 'https://www.amazon.co.jp'),
+('eBay', 'source', 'https://www.ebay.com'),
+('TikTok Shop US', 'source', 'https://www.tiktok.com/shop'),
+('Reddit', 'source', 'https://www.reddit.com'),
+('1688', 'supplier', 'https://www.1688.com'),
+('阿里国际站', 'supplier', 'https://www.alibaba.com'),
+('拼多多跨境', 'both', 'https://www.pddglobal.com')
+ON CONFLICT (name) DO NOTHING;

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS countries (
 -- 2. 平台表 (包含来源平台和供货平台)
 CREATE TABLE IF NOT EXISTS platforms (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL, -- 平台名称：Amazon/1688/阿里国际站等
+    name VARCHAR(100) UNIQUE NOT NULL, -- 平台名称：Amazon/1688/阿里国际站等，唯一
     type VARCHAR(20) NOT NULL CHECK (type IN ('source', 'supplier', 'both')), -- 平台类型：来源/供货/两者都是
     logo_url VARCHAR(500), -- 平台logo地址
     base_url VARCHAR(500), -- 平台主页地址

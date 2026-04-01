@@ -19,86 +19,58 @@ interface CountryContextType {
   setSelectedCountry: (country: Country) => void
   countries: Country[]
   isLoading: boolean
+  error: string | null
 }
 
 const CountryContext = createContext<CountryContextType | undefined>(undefined)
 
-// 预设的国家数据，后续可从API获取
-const defaultCountries: Country[] = [
-  {
-    id: '1',
-    code: 'US',
-    name: 'United States',
-    currency: 'USD',
-    currency_symbol: '$',
-    language_code: 'en',
-    logistics_days_min: 7,
-    logistics_days_max: 15,
-    popular_categories: ['Electronics', 'Fashion', 'Home & Kitchen', 'Beauty']
-  },
-  {
-    id: '2',
-    code: 'CA',
-    name: 'Canada',
-    currency: 'CAD',
-    currency_symbol: '$',
-    language_code: 'en',
-    logistics_days_min: 10,
-    logistics_days_max: 20,
-    popular_categories: ['Outdoor', 'Home', 'Electronics', 'Pet Supplies']
-  },
-  {
-    id: '3',
-    code: 'JP',
-    name: 'Japan',
-    currency: 'JPY',
-    currency_symbol: '¥',
-    language_code: 'ja',
-    logistics_days_min: 5,
-    logistics_days_max: 12,
-    popular_categories: ['Anime Merch', 'Electronics', 'Cosmetics', 'Home Goods']
-  },
-  {
-    id: '4',
-    code: 'GB',
-    name: 'United Kingdom',
-    currency: 'GBP',
-    currency_symbol: '£',
-    language_code: 'en',
-    logistics_days_min: 7,
-    logistics_days_max: 14,
-    popular_categories: ['Fashion', 'Home & Garden', 'Electronics', 'Beauty']
-  },
-  {
-    id: '5',
-    code: 'DE',
-    name: 'Germany',
-    currency: 'EUR',
-    currency_symbol: '€',
-    language_code: 'de',
-    logistics_days_min: 7,
-    logistics_days_max: 14,
-    popular_categories: ['Automotive', 'Home', 'Electronics', 'Sports']
-  }
-]
-
 export function CountryProvider({ children }: { children: ReactNode }) {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null)
-  const [countries, setCountries] = useState<Country[]>(defaultCountries)
+  const [countries, setCountries] = useState<Country[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
+  // 获取国家列表
   useEffect(() => {
-    // 从localStorage读取上次选择的国家
-    const savedCountry = localStorage.getItem('selectedCountry')
-    if (savedCountry) {
-      setSelectedCountry(JSON.parse(savedCountry))
-    } else {
-      // 默认选择美国
-      setSelectedCountry(defaultCountries[0])
+    const fetchCountries = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch('/api/countries')
+        if (!response.ok) {
+          throw new Error('Failed to fetch countries')
+        }
+        const data = await response.json()
+        setCountries(data)
+
+        // 从localStorage读取上次选择的国家
+        const savedCountry = localStorage.getItem('selectedCountry')
+        if (savedCountry) {
+          const parsedCountry = JSON.parse(savedCountry)
+          // 验证保存的国家是否还在列表中
+          const countryExists = data.some((c: Country) => c.id === parsedCountry.id)
+          if (countryExists) {
+            setSelectedCountry(parsedCountry)
+          } else {
+            // 如果保存的国家不存在，默认选择第一个
+            setSelectedCountry(data[0])
+          }
+        } else {
+          // 默认选择第一个国家
+          setSelectedCountry(data[0])
+        }
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        console.error('Error fetching countries:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+
+    fetchCountries()
   }, [])
 
+  // 持久化选择的国家到localStorage
   useEffect(() => {
     if (selectedCountry) {
       localStorage.setItem('selectedCountry', JSON.stringify(selectedCountry))
@@ -106,7 +78,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   }, [selectedCountry])
 
   return (
-    <CountryContext.Provider value={{ selectedCountry, setSelectedCountry, countries, isLoading }}>
+    <CountryContext.Provider value={{ selectedCountry, setSelectedCountry, countries, isLoading, error }}>
       {children}
     </CountryContext.Provider>
   )
@@ -118,4 +90,13 @@ export function useCountry() {
     throw new Error('useCountry must be used within a CountryProvider')
   }
   return context
+}
+
+// 便捷hooks：获取当前选中国家的常用属性
+export function useCurrentCountry() {
+  const { selectedCountry } = useCountry()
+  if (!selectedCountry) {
+    throw new Error('useCurrentCountry must be used when a country is selected')
+  }
+  return selectedCountry
 }

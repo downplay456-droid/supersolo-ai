@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Condensed:wght@300;400;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 17% 17%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 17% 13%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 17% 13%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 24 94% 54%; /* 工业橙 #ff7a18 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 17% 20%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 220 17% 20%;
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 24 94% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 17% 25%; /* 实边边框，工业感 */
+    --input: 220 17% 20%;
+    --ring: 24 94% 54%;
+
+    --radius: 0px;
+  }
+
+  .dark {
+    --background: 220 17% 8%; /* 深灰工业背景 #12161d */
+    --foreground: 0 0% 98%;
+
+    --card: 220 17% 11%; /* 卡片深灰 #171c25 */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 17% 11%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 24 94% 54%; /* 工业橙主色调 #ff7a18 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 17% 16%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 220 17% 16%;
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 24 94% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 17% 20%; /* 硬朗实边边框 */
+    --input: 220 17% 16%;
+    --ring: 24 94% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

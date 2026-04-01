@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(netstat -ano)",
+      "Bash(opencli supabase:*)",
+      "Bash(opencli install:*)",
+      "Bash(npx supabase:*)",
+      "Bash(curl:*)",
+      "Bash(npm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(findstr :3000)",
+      "Bash(tasklist)",
+      "Bash(findstr 987)",
+      "Bash(findstr :64360)",
+      "Bash(npm install:*)",
+      "WebSearch",
+      "Bash(supabase:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(teach-impeccable:*)",
+      "Bash(cp -r D:/OpenCode/supersolo-ai/app D:/OpenCode/supersolo-ai/ui_backup_20260401/)",
+      "Bash(cp -r D:/OpenCode/supersolo-ai/components D:/OpenCode/supersolo-ai/ui_backup_20260401/)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)"
+    ]
+  }
+}

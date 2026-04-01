@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -12,11 +12,11 @@ import { Loader2, Mail, Lock, KeyRound } from 'lucide-react'
 
 type AuthMode = 'password' | 'magic_link' | 'signup'
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
-  
+
   const [mode, setMode] = useState<AuthMode>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -223,5 +223,15 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+    </div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

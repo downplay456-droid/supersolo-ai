@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 // Mock product data - this will be replaced with real crawler/third-party API data later
 const mockProducts = [
   {

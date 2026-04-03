@@ -105,7 +105,13 @@ export default function ProductsPage() {
     try {
       // 检查是否是mock数据
       if (productId.startsWith('mock-')) {
-        toast.info('ℹ️ 收藏功能在Mock数据模式下不可用，请配置真实数据源后使用', { duration: 4000 })
+        toast(
+          <div className="flex items-center gap-2">
+            <span>ℹ️</span>
+            <span>收藏功能在Mock数据模式下不可用，请配置真实数据源后使用</span>
+          </div>,
+          { duration: 4000, style: { background: '#3b82f6', color: 'white', fontWeight: 'bold' } }
+        )
         return
       }
 

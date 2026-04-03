@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
+import { Home, Package, Settings, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Home, Package, Settings, User, TrendingUp, DollarSign, Star, Heart, Copy } from 'lucide-react'
 import CountrySelector from '@/components/CountrySelector'
+import ProductCard from '@/components/ProductCard'
+import ProductFilters from '@/components/ProductFilters'
 import { useCountry } from '@/lib/country-context'
+import { Product } from '@/lib/types/product'
 import toast from 'react-hot-toast'
 
 export default function ProductsPage() {
@@ -18,8 +20,21 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [favorites, setFavorites] = useState<string[]>([])
   const [generatingProductId, setGeneratingProductId] = useState<string | null>(null)
+  const [filters, setFilters] = useState<{
+    category?: string
+    minPrice?: number
+    maxPrice?: number
+    sortBy: string
+    sortOrder: string
+  }>({
+    category: undefined,
+    minPrice: undefined,
+    maxPrice: undefined,
+    sortBy: 'potential_score',
+    sortOrder: 'desc'
+  })
 
-  const [products, setProducts] = useState<any[]>([])
+  const [products, setProducts] = useState<Product[]>([])
 
   useEffect(() => {
     const getUser = async () => {
@@ -34,13 +49,21 @@ export default function ProductsPage() {
     getUser()
   }, [supabase, router])
 
-  // Fetch products when user or selected country changes
+  // Fetch products when user, selected country or filters change
   useEffect(() => {
     if (!user || !selectedCountry) return
 
     const fetchProducts = async () => {
       try {
-        const response = await fetch(`/api/products?country=${selectedCountry.code}`)
+        const params = new URLSearchParams()
+        params.append('country', selectedCountry.code)
+        if (filters.category) params.append('category', filters.category)
+        if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString())
+        if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString())
+        params.append('sortBy', filters.sortBy)
+        params.append('sortOrder', filters.sortOrder)
+
+        const response = await fetch(`/api/products?${params.toString()}`)
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.error || 'Failed to fetch products')
@@ -53,7 +76,7 @@ export default function ProductsPage() {
     }
 
     fetchProducts()
-  }, [user, selectedCountry])
+  }, [user, selectedCountry, filters])
 
   const toggleFavorite = (productId: string) => {
     setFavorites(prev =>
@@ -115,6 +138,9 @@ export default function ProductsPage() {
       setGeneratingProductId(null)
     }
   }
+
+  // Get unique categories from products
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean) as string[]))
 
   if (loading) {
     return (
@@ -180,106 +206,29 @@ export default function ProductsPage() {
 
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto">
-            {/* 筛选栏 - Strong Bold风格 */}
-            <div className="flex flex-wrap gap-4 mb-8 items-center justify-between border-b-2 border-black pb-4">
-              <div className="flex flex-wrap gap-3">
-                <button className="px-6 py-3 bg-red-600 text-white font-bold text-base hover:bg-red-700 transition-colors border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                  ALL CATEGORIES
-                </button>
-                <button className="px-6 py-3 bg-white border-2 border-black text-base font-bold hover:bg-gray-100 hover:shadow-[2px_2px_0px_0px_#000] transition-all">
-                  ELECTRONICS
-                </button>
-                <button className="px-6 py-3 bg-white border-2 border-black text-base font-bold hover:bg-gray-100 hover:shadow-[2px_2px_0px_0px_#000] transition-all">
-                  HOME
-                </button>
-                <button className="px-6 py-3 bg-white border-2 border-black text-base font-bold hover:bg-gray-100 hover:shadow-[2px_2px_0px_0px_#000] transition-all">
-                  FASHION
-                </button>
-                <button className="px-6 py-3 bg-white border-2 border-black text-base font-bold hover:bg-gray-100 hover:shadow-[2px_2px_0px_0px_#000] transition-all">
-                  BEAUTY
-                </button>
-              </div>
-              <div className="text-lg font-mono font-bold text-gray-600">
-                SHOWING {products.length} TRENDING PRODUCTS
-              </div>
+            {/* 筛选组件 */}
+            <ProductFilters
+              onFilterChange={setFilters}
+              categories={categories}
+            />
+
+            {/* 结果统计 */}
+            <div className="text-lg font-mono font-bold text-gray-600 mb-8">
+              SHOWING {products.length} TRENDING PRODUCTS
             </div>
 
-            {/* 商品网格 - Strong Bold风格 */}
+            {/* 商品网格 - 使用ProductCard组件 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
-                <div key={product.id} className="border-2 border-black overflow-hidden group hover:border-red-600 hover:shadow-[8px_8px_0px_0px_#ff0000] transition-all bg-white">
-                  <div className="relative">
-                    <img
-                      src={product.main_image_url}
-                      alt={product.title}
-                      className="w-full aspect-square object-cover bg-white"
-                      onError={(e) => {
-                        // 图片加载失败时使用与设计风格统一的文字占位符
-                        const imgElement = e.target as HTMLImageElement;
-                        const parent = imgElement.parentElement;
-                        if (parent) {
-                          // 创建风格统一的占位符
-                          const placeholder = document.createElement('div');
-                          placeholder.className = 'w-full aspect-square bg-gray-50 flex flex-col items-center justify-center p-4 border-b-2 border-black';
-                          placeholder.innerHTML = `
-                            <div class="font-display font-heavy text-3xl text-black text-center leading-tight">
-                              ${product.title.split(' ').slice(0, 3).join(' ')}
-                            </div>
-                            <div class="mt-4 px-4 py-2 bg-red-600 text-white font-bold text-sm">
-                              PRODUCT IMAGE
-                            </div>
-                          `;
-                          parent.replaceChild(placeholder, imgElement);
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => toggleFavorite(product.id)}
-                      className="absolute top-4 right-4 p-2 bg-white border-2 border-black hover:bg-gray-100 transition-colors"
-                    >
-                      <Heart
-                        className={`w-5 h-5 ${
-                          favorites.includes(product.id) ? 'fill-red-600 text-red-600' : 'text-black'
-                        }`}
-                      />
-                    </button>
-                    <div className="absolute top-4 left-4 px-3 py-1.5 bg-red-600 text-white text-sm font-mono font-bold border-2 border-black">
-                      {product.potential_score}% POTENTIAL
-                    </div>
-                  </div>
-                  <div className="p-5 border-t-2 border-black">
-                    <h3 className="text-lg font-bold line-clamp-2 mb-4 h-12">
-                      {product.title}
-                    </h3>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="w-5 h-5 text-red-600" />
-                        <span className="text-2xl font-mono font-heavy">{selectedCountry?.currency_symbol}{product.current_price}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="w-5 h-5 text-green-700" />
-                        <span className="text-lg font-mono font-bold text-green-700">+{product.sales_growth_rate}%</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm text-gray-600 font-bold">{product.source_platform}</span>
-                      <span className="text-sm px-3 py-1 bg-gray-100 text-black font-bold border border-black">{product.category}</span>
-                    </div>
-                    <div>
-                      <Button
-                        onClick={() => generateProductCopy(product)}
-                        disabled={generatingProductId === product.id}
-                        className="w-full bg-black hover:bg-gray-800 text-white font-bold text-base h-12 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
-                      >
-                        {generatingProductId === product.id ? (
-                          <><div className="animate-spin h-4 w-4 border-b-2 border-white mr-2" />GENERATING...</>
-                        ) : (
-                          <><Copy className="w-4 h-4 mr-2" />GENERATE MARKETING COPY</>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  isFavorite={favorites.includes(product.id)}
+                  isGenerating={generatingProductId === product.id}
+                  currencySymbol={selectedCountry?.currency_symbol || '$'}
+                  onToggleFavorite={toggleFavorite}
+                  onGenerateCopy={generateProductCopy}
+                />
               ))}
             </div>
           </div>

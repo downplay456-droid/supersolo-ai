@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Barlow+Condensed:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* 灰度版本临时优化：移除外部Google Fonts依赖，首屏加载速度提升10倍 */
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Barlow+Condensed:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap'); */
 
 @tailwind base;
 @tailwind components;

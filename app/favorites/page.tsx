@@ -3,38 +3,31 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Home, Package, Settings, Copy, Heart } from 'lucide-react'
+import { Home, Package, Settings, Heart, Tag, Filter, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CountrySelector from '@/components/CountrySelector'
 import ProductCard from '@/components/ProductCard'
-import ProductFilters from '@/components/ProductFilters'
 import { useCountry } from '@/lib/country-context'
 import { Product } from '@/lib/types/product'
 import toast from 'react-hot-toast'
 
-export default function ProductsPage() {
+interface FavoriteProduct extends Product {
+  favorite_id: string
+  status: string
+  notes?: string
+  profit_estimate?: number
+  created_at: string
+}
+
+export default function FavoritesPage() {
   const supabase = createClient()
   const router = useRouter()
   const { selectedCountry } = useCountry()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [favorites, setFavorites] = useState<string[]>([])
+  const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
   const [generatingProductId, setGeneratingProductId] = useState<string | null>(null)
-  const [filters, setFilters] = useState<{
-    category?: string
-    minPrice?: number
-    maxPrice?: number
-    sortBy: string
-    sortOrder: string
-  }>({
-    category: undefined,
-    minPrice: undefined,
-    maxPrice: undefined,
-    sortBy: 'potential_score',
-    sortOrder: 'desc'
-  })
-
-  const [products, setProducts] = useState<Product[]>([])
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   useEffect(() => {
     const getUser = async () => {
@@ -55,89 +48,58 @@ export default function ProductsPage() {
 
     const fetchFavorites = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('user_product_favorites')
-          .select('product_id')
+          .select(`
+            id,
+            status,
+            notes,
+            profit_estimate,
+            created_at,
+            product:products(*)
+          `)
           .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
 
-        const favoriteIds = data.map(item => item.product_id)
-        setFavorites(favoriteIds)
-      } catch (error: any) {
-        console.error('Failed to fetch favorites:', error)
-      }
-    }
+        const formattedFavorites: FavoriteProduct[] = data.map((item: any) => ({
+          ...item.product,
+          favorite_id: item.id,
+          status: item.status,
+          notes: item.notes,
+          profit_estimate: item.profit_estimate,
+          created_at: item.created_at
+        }))
 
-    fetchFavorites()
-  }, [user, supabase])
-
-  // Fetch products when user, selected country or filters change
-  useEffect(() => {
-    if (!user || !selectedCountry) return
-
-    const fetchProducts = async () => {
-      try {
-        const params = new URLSearchParams()
-        params.append('country', selectedCountry.code)
-        if (filters.category) params.append('category', filters.category)
-        if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString())
-        if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString())
-        params.append('sortBy', filters.sortBy)
-        params.append('sortOrder', filters.sortOrder)
-
-        const response = await fetch(`/api/products?${params.toString()}`)
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to fetch products')
-        }
-        const data = await response.json()
-        setProducts(data.data)
+        setFavorites(formattedFavorites)
       } catch (error: any) {
         toast.error(`❌ ${error.message}`)
       }
     }
 
-    fetchProducts()
-  }, [user, selectedCountry, filters])
+    fetchFavorites()
+  }, [user, supabase, statusFilter])
 
   const toggleFavorite = async (productId: string) => {
     try {
-      // 检查是否是mock数据
-      if (productId.startsWith('mock-')) {
-        toast.info('ℹ️ 收藏功能在Mock数据模式下不可用，请配置真实数据源后使用', { duration: 4000 })
-        return
-      }
+      // 从收藏中删除
+      const { error } = await supabase
+        .from('user_product_favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
 
-      const isFavorited = favorites.includes(productId)
+      if (error) throw error
 
-      if (isFavorited) {
-        // 取消收藏
-        const { error } = await supabase
-          .from('user_product_favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('product_id', productId)
-
-        if (error) throw error
-
-        setFavorites(prev => prev.filter(id => id !== productId))
-        toast.success('✅ Removed from your library')
-      } else {
-        // 添加收藏
-        const { error } = await supabase
-          .from('user_product_favorites')
-          .insert({
-            user_id: user.id,
-            product_id: productId,
-            status: 'pending_comparison'
-          })
-
-        if (error) throw error
-
-        setFavorites(prev => [...prev, productId])
-        toast.success('✅ Added to your library')
-      }
+      setFavorites(prev => prev.filter(fav => fav.id !== productId))
+      toast.success('✅ Removed from favorites')
     } catch (error: any) {
       toast.error(`❌ ${error.message}`)
     }
@@ -183,7 +145,7 @@ export default function ProductsPage() {
               toast.success('Copied to clipboard!', { duration: 2000 })
             }}
           >
-            <Copy className="w-3 h-3 mr-1" />
+            <Tag className="w-3 h-3 mr-1" />
             Copy to Clipboard
           </Button>
         </div>,
@@ -196,8 +158,30 @@ export default function ProductsPage() {
     }
   }
 
-  // Get unique categories from products
-  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean) as string[]))
+  // 状态选项
+  const statusOptions = [
+    { value: 'all', label: '全部' },
+    { value: 'pending_comparison', label: '待比价' },
+    { value: 'pending_copywriting', label: '待生成文案' },
+    { value: 'pending_shipping', label: '待发货' },
+    { value: 'listed', label: '已上架' }
+  ]
+
+  // 状态文本映射
+  const statusTextMap: Record<string, string> = {
+    'pending_comparison': '待比价',
+    'pending_copywriting': '待生成文案',
+    'pending_shipping': '待发货',
+    'listed': '已上架'
+  }
+
+  // 状态颜色映射
+  const statusColorMap: Record<string, string> = {
+    'pending_comparison': 'bg-yellow-100 text-yellow-800 border-yellow-400',
+    'pending_copywriting': 'bg-blue-100 text-blue-800 border-blue-400',
+    'pending_shipping': 'bg-purple-100 text-purple-800 border-purple-400',
+    'listed': 'bg-green-100 text-green-800 border-green-400'
+  }
 
   if (loading) {
     return (
@@ -222,12 +206,12 @@ export default function ProductsPage() {
             <Home className="h-6 w-6" />
             <span>DASHBOARD</span>
           </a>
-          <a href="/products" className="flex items-center gap-3 px-6 py-4 bg-red-600 text-white font-extrabold text-lg border-l-8 border-black">
+          <a href="/products" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
             <Package className="h-6 w-6" />
             <span>PRODUCTS</span>
           </a>
-          <a href="/favorites" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
-            <Heart className="h-6 w-6" />
+          <a href="/favorites" className="flex items-center gap-3 px-6 py-4 bg-red-600 text-white font-extrabold text-lg border-l-8 border-black">
+            <Heart className="h-6 w-6 fill-white" />
             <span>MY LIBRARY</span>
           </a>
           <a href="/settings" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
@@ -257,8 +241,8 @@ export default function ProductsPage() {
             <span className="text-black">SUPER</span><span className="text-red-600">SOLO</span>
           </h1>
           <div className="hidden md:block">
-            <h1 className="text-2xl font-display font-heavy">HOT PRODUCTS FOR {selectedCountry?.name?.toUpperCase()}</h1>
-            <p className="text-sm text-gray-600 font-bold">DISCOVER HIGH-POTENTIAL TRENDING PRODUCTS</p>
+            <h1 className="text-2xl font-display font-heavy">MY PRODUCT LIBRARY</h1>
+            <p className="text-sm text-gray-600 font-bold">MANAGE YOUR FAVORITE PRODUCTS</p>
           </div>
           <div className="border-2 border-black">
             <CountrySelector />
@@ -267,31 +251,64 @@ export default function ProductsPage() {
 
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto">
-            {/* 筛选组件 */}
-            <ProductFilters
-              onFilterChange={setFilters}
-              categories={categories}
-            />
+            {/* 筛选栏 */}
+            <div className="mb-8 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="flex items-center gap-4 overflow-x-auto pb-2">
+                {statusOptions.map((option) => (
+                  <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? 'default' : 'secondary'}
+                    onClick={() => setStatusFilter(option.value)}
+                    className={`whitespace-nowrap border-2 border-black font-bold ${
+                      statusFilter === option.value
+                        ? 'bg-black text-white hover:bg-gray-800'
+                        : 'bg-white text-black hover:bg-gray-100'
+                    }`}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
 
-            {/* 结果统计 */}
-            <div className="text-lg font-mono font-bold text-gray-600 mb-8">
-              SHOWING {products.length} TRENDING PRODUCTS
+              <div className="text-lg font-mono font-bold text-gray-600">
+                {favorites.length} PRODUCTS IN LIBRARY
+              </div>
             </div>
 
-            {/* 商品网格 - 使用ProductCard组件 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isFavorite={favorites.includes(product.id)}
-                  isGenerating={generatingProductId === product.id}
-                  currencySymbol={selectedCountry?.currency_symbol || '$'}
-                  onToggleFavorite={toggleFavorite}
-                  onGenerateCopy={generateProductCopy}
-                />
-              ))}
-            </div>
+            {favorites.length === 0 ? (
+              <div className="border-4 border-dashed border-gray-300 p-12 text-center">
+                <Heart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-2xl font-bold mb-2">Your library is empty</h3>
+                <p className="text-gray-600 mb-6">Start adding products from the Products page to build your library</p>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                  onClick={() => router.push('/products')}
+                >
+                  BROWSE TRENDING PRODUCTS
+                </Button>
+              </div>
+            ) : (
+              /* 商品网格 - 使用ProductCard组件 */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {favorites.map((product) => (
+                  <div key={product.favorite_id} className="relative">
+                    {/* 状态标签 */}
+                    <div className={`absolute top-4 left-4 z-10 px-3 py-1 text-xs font-bold border ${statusColorMap[product.status]}`}>
+                      {statusTextMap[product.status]}
+                    </div>
+
+                    <ProductCard
+                      product={product}
+                      isFavorite={true}
+                      isGenerating={generatingProductId === product.id}
+                      currencySymbol={selectedCountry?.currency_symbol || '$'}
+                      onToggleFavorite={toggleFavorite}
+                      onGenerateCopy={generateProductCopy}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </main>
       </div>

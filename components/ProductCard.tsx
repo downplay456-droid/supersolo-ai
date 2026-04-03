@@ -4,6 +4,7 @@ import { Heart, Copy, TrendingUp, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Product } from '@/lib/types/product'
 import toast from 'react-hot-toast'
+import ProfitCalculator from './ProfitCalculator'
 
 interface ProductCardProps {
   product: Product
@@ -83,7 +84,7 @@ export default function ProductCard({
             <span className="text-sm px-3 py-1 bg-gray-100 text-black font-bold border border-black">{product.category}</span>
           )}
         </div>
-        <div>
+        <div className="space-y-2">
           <Button
             onClick={() => onGenerateCopy(product)}
             disabled={isGenerating}
@@ -95,6 +96,11 @@ export default function ProductCard({
               <><Copy className="w-4 h-4 mr-2" />GENERATE MARKETING COPY</>
             )}
           </Button>
+
+          <ProfitCalculator
+            product={product}
+            currencySymbol={currencySymbol}
+          />
         </div>
       </div>
     </div>

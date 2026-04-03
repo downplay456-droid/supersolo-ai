@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Home, Package, Settings, User, Sparkles, CheckCircle2, Clock } from 'lucide-react'
+import { Home, Package, Settings, User, Sparkles, CheckCircle2, Clock, Heart } from 'lucide-react'
 import ProductForm from './product-form'
 
 // 稳定的服务端组件，无额外依赖
@@ -39,6 +39,10 @@ export default async function DashboardPage() {
           <a href="/products" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
             <Package className="h-6 w-6" />
             <span>PRODUCTS</span>
+          </a>
+          <a href="/favorites" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
+            <Heart className="h-6 w-6" />
+            <span>MY LIBRARY</span>
           </a>
           <a href="/settings" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
             <Settings className="h-6 w-6" />

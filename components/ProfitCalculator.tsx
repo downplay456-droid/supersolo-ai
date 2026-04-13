@@ -1,25 +1,70 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Calculator, DollarSign, Percent, Truck, Plus, TrendingUp } from 'lucide-react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { X, Calculator, DollarSign, Percent, Truck, Plus, TrendingUp, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Product } from '@/lib/types/product'
+import toast from 'react-hot-toast'
+
+export interface ProfitCalculatorRef {
+  open: (initialPurchaseCost?: number, initialShippingCost?: number) => void
+  close: () => void
+}
 
 interface ProfitCalculatorProps {
   product: Product
   currencySymbol: string
+  onSaveToFavorites?: (costData: {
+    purchaseCost: number
+    shippingCost: number
+    totalCost: number
+    profit: number
+    profitMargin: number
+  }) => void
 }
 
-export default function ProfitCalculator({ product, currencySymbol }: ProfitCalculatorProps) {
-  // 默认配置，可根据用户设置修改
-  const [costs, setCosts] = useState({
-    purchaseCost: (product.current_price * 0.3).toFixed(2), // 默认采购成本为售价的30%
-    shippingCost: (product.current_price * 0.15).toFixed(2), // 默认运费为售价的15%
-    platformFeeRate: '15', // 默认平台费率15%
-    otherCosts: '0' // 其他成本
-  })
+const ProfitCalculator = forwardRef<ProfitCalculatorRef, ProfitCalculatorProps>(
+  ({ product, currencySymbol, onSaveToFavorites }, ref) => {
+    // 默认配置，可根据用户设置修改
+    const [costs, setCosts] = useState({
+      purchaseCost: (product.current_price * 0.3).toFixed(2), // 默认采购成本为售价的30%
+      shippingCost: (product.current_price * 0.15).toFixed(2), // 默认运费为售价的15%
+      platformFeeRate: '15', // 默认平台费率15%
+      otherCosts: '0' // 其他成本
+    })
+    const [isOpen, setIsOpen] = useState(false)
+
+    // 暴露给父组件的方法
+    useImperativeHandle(ref, () => ({
+      open: (initialPurchaseCost?: number, initialShippingCost?: number) => {
+        if (initialPurchaseCost) {
+          setCosts(prev => ({
+            ...prev,
+            purchaseCost: initialPurchaseCost.toFixed(2),
+            ...(initialShippingCost ? { shippingCost: initialShippingCost.toFixed(2) } : {})
+          }))
+        }
+        setIsOpen(true)
+      },
+      close: () => setIsOpen(false)
+    }))
+
+    // 保存到选品库
+    const handleSaveToFavorites = () => {
+      if (onSaveToFavorites) {
+        const data = {
+          purchaseCost,
+          shippingCost,
+          totalCost,
+          profit,
+          profitMargin
+        }
+        onSaveToFavorites(data)
+        toast.success('✅ 成本数据已保存到选品库')
+      }
+    }
 
   // 计算利润
   const sellingPrice = product.current_price
@@ -41,7 +86,7 @@ export default function ProfitCalculator({ product, currencySymbol }: ProfitCalc
   }
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
           className="w-full mt-2 bg-[#c6ff00] hover:bg-[#b3e600] text-black font-bold text-base h-12 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
@@ -190,9 +235,32 @@ export default function ProfitCalculator({ product, currencySymbol }: ProfitCalc
                 <p className="text-red-600 font-bold">❌ Low profit margin, not recommended.</p>
               )}
             </div>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-2 pt-2">
+              {onSaveToFavorites && (
+                <Button
+                  onClick={handleSaveToFavorites}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold h-12 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  SAVE TO FAVORITES
+                </Button>
+              )}
+              <Button
+                onClick={() => setIsOpen(false)}
+                className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-bold h-12 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              >
+                CLOSE
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   )
-}
+})
+
+ProfitCalculator.displayName = 'ProfitCalculator'
+
+export default ProfitCalculator

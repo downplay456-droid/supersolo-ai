@@ -25,7 +25,10 @@
       "Bash(git commit:*)",
       "Bash(git config:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(psql \"postgresql://postgres:[YOUR_PASSWORD]@db.mnncscht xzgwgpc swoyz.supabase.co:5432/postgres\" -f test.sql)"
     ]
   }
 }

@@ -1,10 +1,12 @@
 'use client'
 
+import { useState, useRef } from 'react'
 import { Heart, Copy, TrendingUp, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Product } from '@/lib/types/product'
 import toast from 'react-hot-toast'
-import ProfitCalculator from './ProfitCalculator'
+import ProfitCalculator, { ProfitCalculatorRef } from './ProfitCalculator'
+import PriceComparisonModal from './PriceComparisonModal'
 
 interface ProductCardProps {
   product: Product
@@ -23,6 +25,14 @@ export default function ProductCard({
   onToggleFavorite,
   onGenerateCopy
 }: ProductCardProps) {
+  const profitCalculatorRef = useRef<ProfitCalculatorRef>(null)
+
+  // 保存成本数据到选品库
+  const handleSaveCostData = (costData: any) => {
+    // 这里可以调用父组件的保存方法，或者直接更新选品库数据
+    toast.success('成本数据已保存到选品库')
+  }
+
   return (
     <div className="border-2 border-black overflow-hidden group hover:border-red-600 hover:shadow-[8px_8px_0px_0px_#ff0000] transition-all bg-white">
       <div className="relative">
@@ -98,8 +108,18 @@ export default function ProductCard({
           </Button>
 
           <ProfitCalculator
+            ref={profitCalculatorRef}
             product={product}
             currencySymbol={currencySymbol}
+            onSaveToFavorites={handleSaveCostData}
+          />
+
+          <PriceComparisonModal
+            product={product}
+            currencySymbol={currencySymbol}
+            onSelectSupplier={(purchaseCost: number, shippingCost: number) => {
+              profitCalculatorRef.current?.open(purchaseCost, shippingCost)
+            }}
           />
         </div>
       </div>

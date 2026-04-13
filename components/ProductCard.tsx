@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Product } from '@/lib/types/product'
 import toast from 'react-hot-toast'
 import ProfitCalculator from './ProfitCalculator'
+import LogisticsQuote from './LogisticsQuote'
 
 interface ProductCardProps {
   product: Product
@@ -96,6 +97,11 @@ export default function ProductCard({
               <><Copy className="w-4 h-4 mr-2" />GENERATE MARKETING COPY</>
             )}
           </Button>
+
+          <LogisticsQuote
+            product={product}
+            currencySymbol={currencySymbol}
+          />
 
           <ProfitCalculator
             product={product}

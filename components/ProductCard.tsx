@@ -28,7 +28,7 @@ export default function ProductCard({
   const profitCalculatorRef = useRef<ProfitCalculatorRef>(null)
 
   // 保存成本数据到选品库
-  const handleSaveCostData = (costData: any) => {
+  const handleSaveCostData = (costData: Record<string, unknown>) => {
     // 这里可以调用父组件的保存方法，或者直接更新选品库数据
     toast.success('成本数据已保存到选品库')
   }

@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { Product, ProductQueryParams, RawThirdPartyProduct } from '@/lib/types/product'
 import { createAPIClient } from '@/lib/third-party-api/clients'
 import { cache } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // 计算潜力评分
 function calculatePotentialScore(product: RawThirdPartyProduct): number {
@@ -90,7 +91,7 @@ function normalizeProductData(
 }
 
 // 获取平台ID
-async function getPlatformId(supabase: any, platformName: string): Promise<string | null> {
+async function getPlatformId(supabase: SupabaseClient, platformName: string): Promise<string | null> {
   const { data } = await supabase
     .from('platforms')
     .select('id')
@@ -101,7 +102,7 @@ async function getPlatformId(supabase: any, platformName: string): Promise<strin
 }
 
 // 获取国家信息
-async function getCountryId(supabase: any, countryCode: string): Promise<{ id: string; currency_symbol: string } | null> {
+async function getCountryId(supabase: SupabaseClient, countryCode: string): Promise<{ id: string; currency_symbol: string } | null> {
   const { data } = await supabase
     .from('countries')
     .select('id, code, name, currency_symbol')
@@ -112,7 +113,7 @@ async function getCountryId(supabase: any, countryCode: string): Promise<{ id: s
 }
 
 // 批量保存产品到数据库
-async function saveProductsToDB(supabase: any, products: Omit<Product, 'id' | 'created_at' | 'updated_at'>[]) {
+async function saveProductsToDB(supabase: SupabaseClient, products: Omit<Product, 'id' | 'created_at' | 'updated_at'>[]) {
   if (products.length === 0) return []
 
   const { data, error } = await supabase
@@ -133,7 +134,7 @@ async function saveProductsToDB(supabase: any, products: Omit<Product, 'id' | 'c
 
 // 从数据库获取产品
 async function getProductsFromDB(
-  supabase: any,
+  supabase: SupabaseClient,
   params: ProductQueryParams
 ): Promise<{ data: Product[], total: number }> {
   const { countryCode, category, minPrice, maxPrice, minPotentialScore, sortBy = 'potential_score', sortOrder = 'desc', page = 1, pageSize = 24 } = params
@@ -185,7 +186,7 @@ async function getProductsFromDB(
   }
 
   // 格式化数据
-  const formattedProducts = data.map((item: any) => ({
+  const formattedProducts = data.map((item: Product & { platforms: { name: string }; countries: { currency_symbol: string } }) => ({
     ...item,
     source_platform: item.platforms.name,
     currency_symbol: item.countries.currency_symbol

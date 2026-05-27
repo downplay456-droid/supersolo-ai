@@ -60,7 +60,7 @@ export default function PriceComparisonModal({ product, currencySymbol, onSelect
         },
         body: JSON.stringify({
           product_title: product.title,
-          product_image: product.image_url,
+          product_image: product.image_urls?.[0],
           product_id: product.id,
           weight: product.weight
         })

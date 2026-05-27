@@ -66,10 +66,11 @@ export default function ProductForm({ userId }: ProductFormProps) {
 
       // 3秒后重置状态
       setTimeout(() => setStatus('idle'), 3000)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating product:', err)
       setStatus('error')
-      toast.error(err.message || '❌ Failed to generate product, please try again')
+      const message = err instanceof Error ? err.message : 'Failed to generate product, please try again'
+      toast.error(`❌ ${message}`)
       // 5秒后重置错误状态
       setTimeout(() => setStatus('idle'), 5000)
     } finally {

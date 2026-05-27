@@ -47,3 +47,19 @@ logs
 # temp files
 *.tmp
 .cache
+
+# AI tools
+.qwen/
+.claude/settings.local.json
+
+# dev artifacts
+npm_dev.*
+ui_backup_*/
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# project reports / media
+PROJECT_REPORT*.md
+灰色_项目宣传视频/

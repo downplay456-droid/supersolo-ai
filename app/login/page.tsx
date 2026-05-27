@@ -41,9 +41,10 @@ function LoginContent() {
       setTimeout(() => {
         router.push(redirectTo)
       }, 300)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '登录失败，请检查邮箱和密码'
       console.error('Login error:', err)
-      router.push(`/login?error=${encodeURIComponent(err.message || '登录失败，请检查邮箱和密码')}&redirectTo=${redirectTo}`)
+      router.push(`/login?error=${encodeURIComponent(message)}&redirectTo=${redirectTo}`)
     } finally {
       setLoading(false)
     }
@@ -64,9 +65,10 @@ function LoginContent() {
       if (error) throw error
       router.refresh()
       router.push('/login?message=Check your email for the magic link to sign in')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '发送魔法链接失败，请稍后重试'
       console.error('Magic link error:', err)
-      router.push(`/login?error=${encodeURIComponent(err.message || '发送魔法链接失败，请稍后重试')}&redirectTo=${redirectTo}`)
+      router.push(`/login?error=${encodeURIComponent(message)}&redirectTo=${redirectTo}`)
     } finally {
       setLoading(false)
     }
@@ -88,9 +90,10 @@ function LoginContent() {
       if (error) throw error
       router.refresh()
       router.push('/login?message=Check your email to confirm your account')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '注册失败，请稍后重试'
       console.error('Signup error:', err)
-      router.push(`/login?error=${encodeURIComponent(err.message || '注册失败，请稍后重试')}&redirectTo=${redirectTo}`)
+      router.push(`/login?error=${encodeURIComponent(message)}&redirectTo=${redirectTo}`)
     } finally {
       setLoading(false)
     }

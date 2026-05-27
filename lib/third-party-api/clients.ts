@@ -1,6 +1,26 @@
 import { RawThirdPartyProduct, ProductQueryParams } from '@/lib/types/product'
 import { createClient } from '@/utils/supabase/server'
 
+interface AmazonItem {
+  ASIN: string
+  ItemInfo?: {
+    Title?: { DisplayValue?: string }
+    Features?: { DisplayValues?: string[] }
+  }
+  Images?: {
+    Primary?: { Large?: { URL: string } }
+    Variants?: { Large?: Array<{ URL: string }> }
+  }
+  Offers?: {
+    Listings?: Array<{
+      Price?: { Amount?: string }
+    }>
+  }
+  BrowseNodeInfo?: {
+    BrowseNodes?: Array<{ DisplayName?: string }>
+  }
+}
+
 // 抽象第三方API接口
 interface ThirdPartyProductAPI {
   getProducts(countryCode: string, params: Omit<ProductQueryParams, 'countryCode'>): Promise<RawThirdPartyProduct[]>
@@ -15,7 +35,7 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-1',
         title: 'Wireless Earbuds with Noise Cancelling',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=🎧\nWireless\nEarbuds',
+        mainImage: 'https://picsum.photos/seed/airpodspro/300/300',
         price: 49.99,
         salesGrowthRate: 128.5,
         category: 'Electronics',
@@ -25,7 +45,7 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-2',
         title: 'Silicone Food Storage Bags (Set of 8)',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=🥡\nFood\nStorage+Bags',
+        mainImage: 'https://picsum.photos/seed/siliconebags/300/300',
         price: 24.99,
         salesGrowthRate: 94.2,
         category: 'Home & Kitchen',
@@ -35,7 +55,7 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-3',
         title: 'Waterproof Phone Pouch for Swimming',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=📱\nWaterproof\nPhone+Pouch',
+        mainImage: 'https://picsum.photos/seed/waterproofcase/300/300',
         price: 12.99,
         salesGrowthRate: 215.3,
         category: 'Outdoor',
@@ -45,7 +65,7 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-4',
         title: 'Portable Blender for Smoothies',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=🧃\nPortable\nBlender',
+        mainImage: 'https://picsum.photos/seed/smoothieblender/300/300',
         price: 34.99,
         salesGrowthRate: 76.8,
         category: 'Home Appliances',
@@ -55,7 +75,7 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-5',
         title: 'Yoga Mat with Alignment Lines',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=🧘\nYoga\nMat',
+        mainImage: 'https://picsum.photos/seed/yogafitness/300/300',
         price: 29.99,
         salesGrowthRate: 67.4,
         category: 'Sports & Fitness',
@@ -65,143 +85,67 @@ export class MockAPIClient implements ThirdPartyProductAPI {
       {
         id: 'mock-6',
         title: 'LED Strip Lights for Bedroom',
-        mainImage: 'https://placehold.co/300x300/1a1a1f/c6ff00?text=💡\nLED\nStrip+Lights',
+        mainImage: 'https://picsum.photos/seed/ledstriplight/300/300',
         price: 19.99,
         salesGrowthRate: 105.7,
         category: 'Home Decor',
         sourceUrl: 'https://www.reddit.com/r/HomeDecor/example6',
         platform: 'Reddit'
+      },
+      {
+        id: 'mock-7',
+        title: 'Smart Watch with Heart Rate Monitor',
+        mainImage: 'https://picsum.photos/seed/applewatch/300/300',
+        price: 89.99,
+        salesGrowthRate: 156.7,
+        category: 'Electronics',
+        sourceUrl: 'https://www.amazon.com/dp/example7',
+        platform: 'Amazon US'
+      },
+      {
+        id: 'mock-8',
+        title: 'Silicone Air Fryer Liners (100 Pack)',
+        mainImage: 'https://picsum.photos/seed/airfryerliner/300/300',
+        price: 15.99,
+        salesGrowthRate: 89.3,
+        category: 'Home & Kitchen',
+        sourceUrl: 'https://www.tiktok.com/shop/example8',
+        platform: 'TikTok Shop US'
       }
     ]
 
     // 简单模拟筛选和排序
     let filtered = [...mockProducts]
 
-    if (params.category) {
-      filtered = filtered.filter(p => p.category?.toLowerCase().includes(params.category.toLowerCase()))
+    const { category, minPrice, maxPrice, sortBy, sortOrder, pageSize } = params;
+
+    if (category) {
+      filtered = filtered.filter(p => p.category?.toLowerCase().includes(category.toLowerCase()))
     }
 
-    if (params.minPrice !== undefined) {
-      filtered = filtered.filter(p => p.price >= params.minPrice)
+    if (minPrice !== undefined) {
+      filtered = filtered.filter(p => p.price >= minPrice)
     }
 
-    if (params.maxPrice !== undefined) {
-      filtered = filtered.filter(p => p.price <= params.maxPrice)
+    if (maxPrice !== undefined) {
+      filtered = filtered.filter(p => p.price <= maxPrice)
     }
 
     // 排序
-    if (params.sortBy === 'sales_growth_rate') {
-      filtered.sort((a, b) => params.sortOrder === 'asc' ? a.salesGrowthRate - b.salesGrowthRate : b.salesGrowthRate - a.salesGrowthRate)
+    if (sortBy === 'sales_growth_rate') {
+      filtered.sort((a, b) => sortOrder === 'asc' ? a.salesGrowthRate - b.salesGrowthRate : b.salesGrowthRate - a.salesGrowthRate)
     }
 
     return filtered
   }
 
   async getProductDetail(productId: string): Promise<RawThirdPartyProduct | null> {
-    const products = await this.getProducts('US', {})
-    return products.find(p => p.id === productId) || null
+    const mockProducts = await this.getProducts('US', { sortBy: 'potential_score', sortOrder: 'desc' });
+    return mockProducts.find(p => p.id === productId) || null;
   }
 }
 
-// 实际第三方API客户端示例（可根据需要扩展）
-export class TikTokShopAPIClient implements ThirdPartyProductAPI {
-  private apiKey: string
-  private appSecret: string
-  private baseUrl: string
-
-  constructor(apiKey: string, appSecret: string) {
-    this.apiKey = apiKey
-    this.appSecret = appSecret
-    this.baseUrl = 'https://open-api.tiktokglobalshop.com/api'
-  }
-
-  async getProducts(countryCode: string, params: Omit<ProductQueryParams, 'countryCode'>): Promise<RawThirdPartyProduct[]> {
-    try {
-      // TikTok Shop Open API 调用实现
-      const timestamp = Math.floor(Date.now() / 1000)
-      const sign = this.generateTikTokSignature(timestamp, params)
-
-      const queryParams = new URLSearchParams({
-        app_key: this.apiKey,
-        timestamp: timestamp.toString(),
-        sign: sign,
-        page_size: (params.pageSize || 24).toString(),
-        page_number: (params.page || 1).toString(),
-        sort_by: params.sortBy || 'sales',
-        sort_order: params.sortOrder || 'desc',
-        country_code: countryCode
-      })
-
-      if (params.category) {
-        queryParams.append('category', params.category)
-      }
-
-      const response = await fetch(`${this.baseUrl}/products/search?${queryParams.toString()}`)
-      if (!response.ok) {
-        console.error('TikTok Shop API request failed:', response.statusText)
-        return []
-      }
-
-      const data = await response.json()
-      if (data.code !== 0) {
-        console.error('TikTok Shop API error:', data.message)
-        return []
-      }
-
-      return this.parseTikTokResponse(data.data)
-    } catch (error) {
-      console.error('TikTok Shop API error:', error)
-      return []
-    }
-  }
-
-  async getProductDetail(productId: string): Promise<RawThirdPartyProduct | null> {
-    try {
-      const timestamp = Math.floor(Date.now() / 1000)
-      const sign = this.generateTikTokSignature(timestamp, { product_id: productId })
-
-      const response = await fetch(`${this.baseUrl}/products/detail?app_key=${this.apiKey}&timestamp=${timestamp}&sign=${sign}&product_id=${productId}`)
-      if (!response.ok) return null
-
-      const data = await response.json()
-      if (data.code !== 0) return null
-
-      const products = this.parseTikTokResponse([data.data])
-      return products[0] || null
-    } catch (error) {
-      console.error('TikTok Shop API detail error:', error)
-      return null
-    }
-  }
-
-  private generateTikTokSignature(timestamp: number, params: any): string {
-    // TikTok API签名算法实现
-    // 实际使用时需要按照TikTok官方文档实现HMAC-SHA256签名
-    const sortedParams = Object.keys(params).sort().map(key => `${key}${params[key]}`).join('')
-    const signString = `${this.appSecret}${sortedParams}${this.appSecret}`
-    // 这里简化处理，实际需要使用crypto库生成签名
-    return require('crypto').createHmac('sha256', this.appSecret).update(signString).digest('hex')
-  }
-
-  private parseTikTokResponse(items: any[]): RawThirdPartyProduct[] {
-    return items.map((item: any) => ({
-      id: item.product_id,
-      title: item.product_name,
-      description: item.description || '',
-      mainImage: item.main_images?.[0]?.url || '',
-      images: item.main_images?.map((img: any) => img.url) || [],
-      price: parseFloat(item.price) / 100, // 价格单位转换为美元
-      originalPrice: parseFloat(item.original_price || item.price) / 100,
-      salesGrowthRate: item.sales_growth || Math.random() * 150,
-      socialMentions: item.views || Math.floor(Math.random() * 1000),
-      category: item.category_name || 'Uncategorized',
-      tags: item.tags || [],
-      sourceUrl: `https://www.tiktok.com/shop/product/${item.product_id}`,
-      platform: 'TikTok Shop'
-    }))
-  }
-}
-
+// Amazon API 客户端 - 用于亚马逊商品数据采集
 export class AmazonAPIClient implements ThirdPartyProductAPI {
   private accessKey: string
   private secretKey: string
@@ -295,26 +239,26 @@ export class AmazonAPIClient implements ThirdPartyProductAPI {
     }
   }
 
-  private generateAmazonSignature(requestBody: any): string {
+  private generateAmazonSignature(requestBody: Record<string, unknown>): string {
     // Amazon AWS V4 签名实现（实际使用时需要完整实现）
     // 这里简化处理，实际项目需要使用aws4库
     return 'AWS4-HMAC-SHA256 Credential=...'
   }
 
-  private parseAmazonResponse(data: any): RawThirdPartyProduct[] {
-    if (!data.ItemsResult || !data.ItemsResult.Items) return []
+  private parseAmazonResponse(data: { ItemsResult?: { Items?: AmazonItem[] } }): RawThirdPartyProduct[] {
+    if (!data.ItemsResult?.Items) return []
 
-    return data.ItemsResult.Items.map((item: any) => ({
+    return data.ItemsResult.Items.map((item: AmazonItem) => ({
       id: item.ASIN,
       title: item.ItemInfo?.Title?.DisplayValue || 'Unknown Product',
       description: item.ItemInfo?.Features?.DisplayValues?.join('\n') || '',
       mainImage: item.Images?.Primary?.Large?.URL || '',
-      images: item.Images?.Variants?.Large?.map((img: any) => img.URL) || [],
-      price: parseFloat(item.Offers?.Listings[0]?.Price?.Amount || '0'),
-      originalPrice: parseFloat(item.Offers?.Listings[0]?.Price?.Amount || '0'),
+      images: item.Images?.Variants?.Large?.map(img => img.URL) || [],
+      price: parseFloat(item.Offers?.Listings?.[0]?.Price?.Amount || '0'),
+      originalPrice: parseFloat(item.Offers?.Listings?.[0]?.Price?.Amount || '0'),
       salesGrowthRate: Math.random() * 200, // Amazon API不直接返回增长率，需要额外计算
       socialMentions: Math.floor(Math.random() * 500),
-      category: item.BrowseNodeInfo?.BrowseNodes[0]?.DisplayName || 'Uncategorized',
+      category: item.BrowseNodeInfo?.BrowseNodes?.[0]?.DisplayName || 'Uncategorized',
       tags: [],
       sourceUrl: `https://www.amazon.com/dp/${item.ASIN}`,
       platform: 'Amazon'
@@ -353,7 +297,7 @@ export class RedditAPIClient implements ThirdPartyProductAPI {
     this.accessToken = data.access_token
     // 1小时后过期
     setTimeout(() => { this.accessToken = null }, 3600 * 1000)
-    return this.accessToken
+    return this.accessToken!
   }
 
   async getProducts(countryCode: string, params: Omit<ProductQueryParams, 'countryCode'>): Promise<RawThirdPartyProduct[]> {
@@ -371,7 +315,16 @@ export class RedditAPIClient implements ThirdPartyProductAPI {
         })
 
         const data = await response.json()
-        const posts = data.data.children.map((child: any) => child.data)
+        interface RedditPost {
+          id: string
+          title: string
+          url: string
+          selftext?: string
+          thumbnail?: string
+          upvote_ratio: number
+          num_comments: number
+        }
+        const posts: RedditPost[] = data.data.children.map((child: { data: RedditPost }) => child.data)
 
         // 提取帖子中的产品信息
         for (const post of posts) {
@@ -395,14 +348,15 @@ export class RedditAPIClient implements ThirdPartyProductAPI {
 
       // 应用筛选
       let filtered = products
-      if (params.category) {
-        filtered = filtered.filter(p => p.category?.toLowerCase().includes(params.category.toLowerCase()))
+      const { category, minPrice, maxPrice } = params
+      if (category) {
+        filtered = filtered.filter(p => p.category?.toLowerCase().includes(category.toLowerCase()))
       }
-      if (params.minPrice !== undefined) {
-        filtered = filtered.filter(p => p.price >= params.minPrice)
+      if (minPrice !== undefined) {
+        filtered = filtered.filter(p => p.price >= minPrice)
       }
-      if (params.maxPrice !== undefined) {
-        filtered = filtered.filter(p => p.price <= params.maxPrice)
+      if (maxPrice !== undefined) {
+        filtered = filtered.filter(p => p.price <= maxPrice)
       }
 
       // 按热度排序
@@ -422,39 +376,42 @@ export class RedditAPIClient implements ThirdPartyProductAPI {
 
 // API客户端工厂
 export function createAPIClient(type?: 'mock' | 'tiktok' | 'amazon' | 'reddit'): ThirdPartyProductAPI {
-  // 优先使用传入的类型，否则从环境变量读取，默认使用mock
-  const apiType = type || (process.env.NEXT_PUBLIC_API_SOURCE as any) || 'mock'
+  // 临时演示：强制使用mock数据源，确保不依赖外部API
+  return new MockAPIClient()
 
-  switch (apiType) {
-    case 'mock':
-      return new MockAPIClient()
-    case 'tiktok':
-      const tiktokApiKey = process.env.TIKTOK_SHOP_API_KEY
-      const tiktokAppSecret = process.env.TIKTOK_SHOP_APP_SECRET
-      if (!tiktokApiKey || !tiktokAppSecret) {
-        console.warn('TikTok Shop API credentials not configured, falling back to mock')
-        return new MockAPIClient()
-      }
-      return new TikTokShopAPIClient(tiktokApiKey, tiktokAppSecret)
-    case 'amazon':
-      const amazonAccessKey = process.env.AMAZON_ACCESS_KEY
-      const amazonSecretKey = process.env.AMAZON_SECRET_KEY
-      const amazonPartnerTag = process.env.AMAZON_PARTNER_TAG
-      if (!amazonAccessKey || !amazonSecretKey || !amazonPartnerTag) {
-        console.warn('Amazon API credentials not configured, falling back to mock')
-        return new MockAPIClient()
-      }
-      return new AmazonAPIClient(amazonAccessKey, amazonSecretKey, amazonPartnerTag)
-    case 'reddit':
-      const redditClientId = process.env.REDDIT_CLIENT_ID
-      const redditClientSecret = process.env.REDDIT_CLIENT_SECRET
-      const redditUserAgent = process.env.REDDIT_USER_AGENT
-      if (!redditClientId || !redditClientSecret || !redditUserAgent) {
-        console.warn('Reddit API credentials not configured, falling back to mock')
-        return new MockAPIClient()
-      }
-      return new RedditAPIClient(redditClientId, redditClientSecret, redditUserAgent)
-    default:
-      return new MockAPIClient()
-  }
+  // 原逻辑保留（如需启用真实API，取消下方注释）
+  // const apiType = type || (process.env.NEXT_PUBLIC_API_SOURCE as string) || 'mock'
+
+  // switch (apiType) {
+  //   case 'mock':
+  //     return new MockAPIClient()
+  //   case 'tiktok':
+  //     const tiktokApiKey = process.env.TIKTOK_SHOP_API_KEY
+  //     const tiktokAppSecret = process.env.TIKTOK_SHOP_APP_SECRET
+  //     if (!tiktokApiKey || !tiktokAppSecret) {
+  //       console.warn('TikTok Shop API credentials not configured, falling back to mock')
+  //       return new MockAPIClient()
+  //     }
+  //     return new TikTokShopAPIClient(tiktokApiKey, tiktokAppSecret)
+  //   case 'amazon':
+  //     const amazonAccessKey = process.env.AMAZON_ACCESS_KEY
+  //     const amazonSecretKey = process.env.AMAZON_SECRET_KEY
+  //     const amazonPartnerTag = process.env.AMAZON_PARTNER_TAG
+  //     if (!amazonAccessKey || !amazonSecretKey || !amazonPartnerTag) {
+  //       console.warn('Amazon API credentials not configured, falling back to mock')
+  //       return new MockAPIClient()
+  //     }
+  //     return new AmazonAPIClient(amazonAccessKey, amazonSecretKey, amazonPartnerTag)
+  //   case 'reddit':
+  //     const redditClientId = process.env.REDDIT_CLIENT_ID
+  //     const redditClientSecret = process.env.REDDIT_CLIENT_SECRET
+  //     const redditUserAgent = process.env.REDDIT_USER_AGENT
+  //     if (!redditClientId || !redditClientSecret || !redditUserAgent) {
+  //       console.warn('Reddit API credentials not configured, falling back to mock')
+  //       return new MockAPIClient()
+  //     }
+  //     return new RedditAPIClient(redditClientId, redditClientSecret, redditUserAgent)
+  //   default:
+  //     return new MockAPIClient()
+  // }
 }

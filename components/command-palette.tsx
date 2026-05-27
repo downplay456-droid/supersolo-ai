@@ -4,20 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Command } from 'cmdk'
-import {
-  Search,
-  Globe,
-  Sparkles,
-  Package,
-  Settings,
-  User,
-  ChevronRight,
-  Moon,
-  Plus
-} from 'lucide-react'
+import { Search, Sparkles, Globe, Package, Settings, User, ChevronRight, Moon, Plus } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
-interface Product {
+interface TrendingProduct {
   id: string
   original_title: string
   price: number
@@ -25,7 +15,7 @@ interface Product {
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<TrendingProduct[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
   const supabase = createClient()
@@ -59,7 +49,7 @@ export default function CommandPalette() {
           .eq('user_id', user.id)
           .limit(20)
 
-        setProducts(data || [])
+        setProducts(data as TrendingProduct[] || [])
       }
       fetchProducts()
     }

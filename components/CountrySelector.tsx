@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useCountry } from '@/lib/country-context'
+import { useCountry, Country } from '@/lib/country-context'
 import { ChevronDown, Globe, Check, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -31,7 +31,7 @@ export default function CountrySelector() {
 
   if (!selectedCountry) return null
 
-  const handleCountryChange = (country: any) => {
+  const handleCountryChange = (country: Country) => {
     setSelectedCountry(country)
     setIsOpen(false)
     toast.success(`已切换到 ${country.name} 市场`)

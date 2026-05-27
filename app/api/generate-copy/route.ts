@@ -66,10 +66,11 @@ Output only the 3 bullet points, no additional text.
       generatedCopy
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating copy:', error)
+    const message = error instanceof Error ? error.message : 'Failed to generate marketing copy'
     return NextResponse.json(
-      { error: error.message || 'Failed to generate marketing copy' },
+      { error: message },
       { status: 500 }
     )
   }

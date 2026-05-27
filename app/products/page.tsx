@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Home, Package, Settings, Copy, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TrendingUp, DollarSign, Heart, Copy } from 'lucide-react'
+import Sidebar from '@/components/Sidebar'
 import CountrySelector from '@/components/CountrySelector'
-import ProductCard from '@/components/ProductCard'
-import ProductFilters from '@/components/ProductFilters'
 import { useCountry } from '@/lib/country-context'
 import { Product } from '@/lib/types/product'
+import ProductCard from '@/components/ProductCard'
+import ProductFilters from '@/components/ProductFilters'
 import toast from 'react-hot-toast'
 
 export default function ProductsPage() {
@@ -64,7 +65,7 @@ export default function ProductsPage() {
 
         const favoriteIds = data.map(item => item.product_id)
         setFavorites(favoriteIds)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Failed to fetch favorites:', error)
       }
     }
@@ -93,8 +94,9 @@ export default function ProductsPage() {
         }
         const data = await response.json()
         setProducts(data.data)
-      } catch (error: any) {
-        toast.error(`❌ ${error.message}`)
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'An error occurred'
+        toast.error(`❌ ${message}`)
       }
     }
 
@@ -144,18 +146,19 @@ export default function ProductsPage() {
         setFavorites(prev => [...prev, productId])
         toast.success('✅ Added to your library')
       }
-    } catch (error: any) {
-      toast.error(`❌ ${error.message}`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred'
+      toast.error(`❌ ${message}`)
     }
   }
 
-  const generateProductCopy = async (product: any) => {
+  const generateProductCopy = async (product: Product) => {
     setGeneratingProductId(product.id)
     try {
       // Extract keywords from title and category
       const keywords = [
         product.category,
-        ...product.title.split(' ').filter(word => word.length > 3)
+        ...product.title.split(' ').filter((word: string) => word.length > 3)
       ].slice(0, 5) // Take top 5 relevant keywords
 
       const response = await fetch('/api/generate-copy', {
@@ -195,8 +198,9 @@ export default function ProductsPage() {
         </div>,
         { duration: 10000 }
       )
-    } catch (error: any) {
-      toast.error(`❌ ${error.message}`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred'
+      toast.error(`❌ ${message}`)
     } finally {
       setGeneratingProductId(null)
     }
@@ -215,45 +219,7 @@ export default function ProductsPage() {
 
   return (
     <div className="flex min-h-screen bg-white text-black">
-      {/* 固定左侧侧边栏 - Strong Bold风格 */}
-      <aside className="w-64 bg-white border-r-2 border-black hidden md:block relative min-h-screen">
-        <div className="p-6 border-b-2 border-black">
-          <h2 className="text-3xl font-display font-heavy tracking-tighter">
-            <span className="text-black">SUPER</span><span className="text-red-600">SOLO</span>
-          </h2>
-        </div>
-
-        <nav className="p-0 mt-4 space-y-1">
-          <a href="/dashboard" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
-            <Home className="h-6 w-6" />
-            <span>DASHBOARD</span>
-          </a>
-          <a href="/products" className="flex items-center gap-3 px-6 py-4 bg-red-600 text-white font-extrabold text-lg border-l-8 border-black">
-            <Package className="h-6 w-6" />
-            <span>PRODUCTS</span>
-          </a>
-          <a href="/favorites" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
-            <Heart className="h-6 w-6" />
-            <span>MY LIBRARY</span>
-          </a>
-          <a href="/settings" className="flex items-center gap-3 px-6 py-4 hover:bg-gray-100 text-black font-bold text-lg transition-colors">
-            <Settings className="h-6 w-6" />
-            <span>SETTINGS</span>
-          </a>
-        </nav>
-
-        <div className="sticky bottom-0 left-0 right-0 border-t-2 border-black bg-white">
-          <div className="p-4 bg-gray-100 flex items-center gap-3">
-            <div className="w-12 h-12 bg-red-600 text-white flex items-center justify-center font-mono font-heavy text-xl">
-              {user.email?.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 truncate">
-              <p className="text-sm font-bold truncate">{user.email}</p>
-              <p className="text-xs text-gray-600 font-bold uppercase">SELLER ACCOUNT</p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar activeItem="products" userEmail={user.email || ''} />
 
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col">
